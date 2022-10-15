@@ -41,6 +41,10 @@ func setAdminRouter(r *gin.Engine, db *gorm.DB) {
 		adminRouters.GET("/node/delete", api.NodeApi.DeleteNode)
 
 		adminRouters.GET("/task/list", api.TaskApi.List)
+		adminRouters.POST("/task/change-status", api.TaskApi.ChangeStatus)
+		adminRouters.POST("/task/save", api.TaskApi.Save)
+		adminRouters.GET("/task/detail", api.TaskApi.Detail)
+		adminRouters.POST("/task/log", api.TaskApi.Log)
 	}
 
 	// group := r.Group("/admin")

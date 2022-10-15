@@ -2,7 +2,6 @@ package router
 
 import (
 	"gin-api/pkg/mysql"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,11 +9,7 @@ import (
 func NewHttpServer() {
 	db := mysql.GetDB()
 
-	r := gin.Default()
-
-	r.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "a")
-	})
+	r := gin.New()
 
 	setAdminRouter(r, db)
 

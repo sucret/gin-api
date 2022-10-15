@@ -90,6 +90,13 @@ func generateTable() {
 		// 生成 gorm 标签的字段类型属性
 		FieldWithTypeTag: true, // generate with gorm column type tag
 	})
+
+	dataMap := map[string]func(detailType string) (dataType string){
+		"longtext": func(detailType string) (dataType string) { return "string" },
+	}
+
+	g.WithDataTypeMap(dataMap)
+
 	// 设置目标 db
 	g.UseDB(db)
 
@@ -97,7 +104,9 @@ func generateTable() {
 
 	role := g.GenerateModel("role")
 	node := g.GenerateModel("node")
-	g.GenerateModel("cron_task")
+	g.GenerateModel("task")
+	g.GenerateModel("task_log")
+
 	g.GenerateModel("admin_role")
 	g.GenerateModel("role_node")
 

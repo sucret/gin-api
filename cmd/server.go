@@ -7,7 +7,7 @@ package cmd
 import (
 	"fmt"
 	"gin-api/internal/router"
-	"gin-api/internal/task"
+	"gin-api/internal/service"
 	"gin-api/internal/validator"
 
 	"github.com/spf13/cobra"
@@ -44,7 +44,7 @@ func init() {
 }
 
 func run() {
-	task.StartTask()
+	service.StartTask()
 
 	validator.InitializeValidator()
 	router.NewHttpServer()

@@ -1,65 +1,77 @@
 package task
 
 import (
-	"bufio"
 	"fmt"
 	"gin-api/internal/service"
 	"gin-api/pkg/cron"
 	"gin-api/pkg/mysql/model"
-	"io"
 	"os/exec"
-	"sync"
+	"time"
 )
 
-var task cron.Server
+var (
+	logChan = make(chan *model.TaskLog)
+	task    cron.Server
+)
 
 func StartTask() {
 	task = cron.GetCron()
 	task.Start()
 
+	fmt.Println(logChan)
+
 	taskList := service.TaskService.GetAllTask()
 	for _, val := range taskList {
 		Add(val)
 	}
+
+	go taskLogListener()
 }
 
-func Update(cronTask model.CronTask) {
+func Update(cronTask model.Task) {
 	t := makeTask(cronTask)
 	task.Update(t)
 }
 
-func Add(cronTask model.CronTask) {
+func Add(cronTask model.Task) {
 	t := makeTask(cronTask)
 	task.Add(t)
 }
 
-func makeTask(cronTask model.CronTask) (t cron.Task) {
+// 监听日志执行结果
+func taskLogListener() {
+	for {
+		logModel := <-logChan
+		service.TaskLogService.UpdateLog(logModel)
+	}
+}
+
+func makeTask(cronTask model.Task) (t cron.Task) {
 	t = cron.Task{
-		TaskId:     cronTask.CronTaskID,
+		TaskId:     cronTask.TaskID,
 		TntryId:    0,
 		Spec:       cronTask.Spec,
 		ProcessNum: cronTask.ProcessNum,
 		Func: func() {
+			// 任务执行开始时写入日志
+			taskLog := service.TaskLogService.SaveLog(cronTask.TaskID)
+
 			c := exec.Command("bash", "-c", cronTask.Command)
-			stdout, err := c.StdoutPipe()
+
+			output, err := c.CombinedOutput()
+
 			if err != nil {
-				return
+				taskLog.Status = 3
+			} else {
+				taskLog.Status = 2
 			}
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				reader := bufio.NewReader(stdout)
-				for {
-					readString, err := reader.ReadString('\n')
-					if err != nil || err == io.EOF {
-						return
-					}
-					fmt.Print(readString)
-				}
-			}()
-			c.Start()
-			wg.Wait()
+
+			result := string(output)
+
+			taskLog.Log = &result
+			taskLog.EndTime = time.Now()
+
+			logChan <- taskLog
 		},
 	}
 	return
