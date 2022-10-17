@@ -44,7 +44,7 @@ func init() {
 }
 
 func run() {
-	service.StartTask()
+	service.TaskService.StartTask()
 
 	validator.InitializeValidator()
 	router.NewHttpServer()

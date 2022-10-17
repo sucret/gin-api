@@ -99,3 +99,8 @@ func (s *server) Update(task Task) {
 func (s *server) Stop() {
 	s.cronServer.Stop()
 }
+
+// 获取任务map
+func (s *server) TaskMap() map[int32][]Task {
+	return s.task
+}

@@ -84,3 +84,35 @@ func (*taskApi) Log(c *gin.Context) {
 
 	response.Success(c, resp)
 }
+
+func (*taskApi) Execute(c *gin.Context) {
+	taskId, err := strconv.Atoi(c.Query("task_id"))
+	if err != nil {
+		response.BusinessFail(c, "参数错误")
+	}
+
+	err = service.TaskService.Execute(int32(taskId))
+
+	if err != nil {
+		response.BusinessFail(c, err.Error())
+		return
+	}
+
+	response.Success(c, nil)
+}
+
+func (*taskApi) Stop(c *gin.Context) {
+	logId, err := strconv.Atoi(c.Query("task_log_id"))
+	if err != nil {
+		response.BusinessFail(c, "参数错误")
+	}
+
+	err = service.TaskService.StopTask(int32(logId))
+
+	if err != nil {
+		response.BusinessFail(c, err.Error())
+		return
+	}
+
+	response.Success(c, nil)
+}

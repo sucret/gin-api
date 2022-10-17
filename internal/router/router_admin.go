@@ -45,6 +45,9 @@ func setAdminRouter(r *gin.Engine, db *gorm.DB) {
 		adminRouters.POST("/task/save", api.TaskApi.Save)
 		adminRouters.GET("/task/detail", api.TaskApi.Detail)
 		adminRouters.POST("/task/log", api.TaskApi.Log)
+		adminRouters.GET("/task/execute", api.TaskApi.Execute)
+		adminRouters.GET("/task/stop", api.TaskApi.Stop)
+
 	}
 
 	// group := r.Group("/admin")

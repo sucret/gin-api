@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"gin-api/internal/request"
@@ -15,11 +16,17 @@ import (
 )
 
 type task struct {
-	db *gorm.DB
+	db             *gorm.DB
+	taskServer     cron.Server
+	logChan        chan *model.TaskLog
+	processingTask map[int32]context.CancelFunc
 }
 
 var TaskService = &task{
-	db: mysql.GetDB(),
+	db:             mysql.GetDB(),
+	taskServer:     cron.GetCron(),
+	logChan:        make(chan *model.TaskLog),
+	processingTask: make(map[int32]context.CancelFunc),
 }
 
 func (t *task) GetAllTask() (taskList []model.Task) {
@@ -46,9 +53,9 @@ func (t *task) ChangeStatus(ct request.ChangeTaskStatus) (task model.Task, err e
 	t.db.Model(&task).Update("status", ct.Status)
 
 	if ct.Status == 2 {
-		Remove(ct.TaskId)
+		t.Remove(ct.TaskId)
 	} else {
-		Update(task)
+		t.Update(task)
 	}
 	return
 }
@@ -78,9 +85,9 @@ func (t *task) Save(task request.SaveTask) (model model.Task, err error) {
 	}
 
 	if model.Status == 1 {
-		Update(model)
+		t.Update(model)
 	} else {
-		Remove(model.TaskID)
+		t.Remove(model.TaskID)
 	}
 
 	return
@@ -98,51 +105,77 @@ func (t *task) Log(form request.TaskLogList) (resp response.TaskLogResponse, err
 	return
 }
 
-// ---
-
-var (
-	logChan    = make(chan *model.TaskLog)
-	taskServer cron.Server
-)
-
-func StartTask() {
-	taskServer = cron.GetCron()
-	taskServer.Start()
-
-	fmt.Println(logChan)
-
-	taskList := TaskService.GetAllTask()
-	for _, val := range taskList {
-		Add(val)
+func (t *task) Execute(taskId int32) (err error) {
+	task := &model.Task{}
+	if err = t.db.First(&task, taskId).Error; err != nil {
+		err = errors.New("任务不存在")
+		return
 	}
 
-	go taskLogListener()
+	// 创建方法并执行
+	ta := t.makeTask(*task)
+	ta.Func()
+	return
 }
 
-func Update(cronTask model.Task) {
-	t := makeTask(cronTask)
-	taskServer.Update(t)
+func (t *task) StopTask(logId int32) (err error) {
+	log := model.TaskLog{}
+	if err = t.db.Where("task_log_id = ?", logId).First(&log, logId).Error; err != nil {
+		err = errors.New("任务不存在或已结束")
+		return
+	}
+
+	if log.Status != 1 {
+		err = errors.New("任务已结束")
+		return
+	}
+
+	t.processingTask[logId]()
+
+	log.Status = 4
+	log.EndTime = time.Now()
+	t.logChan <- &log
+
+	return
 }
 
-func Remove(taskId int32) {
-	taskServer.Remove(taskId)
+// --------------------
+
+func (t *task) StartTask() {
+	t.taskServer.Start()
+
+	taskList := t.GetAllTask()
+	for _, val := range taskList {
+		t.Add(val)
+	}
+
+	go t.taskLogListener()
 }
 
-func Add(cronTask model.Task) {
-	t := makeTask(cronTask)
-	taskServer.Add(t)
+func (t *task) Update(cronTask model.Task) {
+	ta := t.makeTask(cronTask)
+	t.taskServer.Update(ta)
+}
+
+func (t *task) Remove(taskId int32) {
+	t.taskServer.Remove(taskId)
+}
+
+func (t *task) Add(cronTask model.Task) {
+	ta := t.makeTask(cronTask)
+	t.taskServer.Add(ta)
 }
 
 // 监听日志执行结果
-func taskLogListener() {
+func (t *task) taskLogListener() {
 	for {
-		logModel := <-logChan
+		logModel := <-t.logChan
 		TaskLogService.UpdateLog(logModel)
 	}
 }
 
-func makeTask(cronTask model.Task) (t cron.Task) {
-	t = cron.Task{
+func (t *task) makeTask(cronTask model.Task) (ta cron.Task) {
+	ta = cron.Task{
 		TaskId:     cronTask.TaskID,
 		TntryId:    0,
 		Spec:       cronTask.Spec,
@@ -150,24 +183,56 @@ func makeTask(cronTask model.Task) (t cron.Task) {
 		Func: func() {
 			// 任务执行开始时写入日志
 			taskLog := TaskLogService.SaveLog(cronTask.TaskID)
+			ctx, cancel := context.WithCancel(context.Background())
 
-			fmt.Println(cronTask.Command)
-			c := exec.Command("bash", "-c", cronTask.Command)
+			t.processingTask[taskLog.TaskLogID] = cancel
 
-			output, err := c.CombinedOutput()
+			forever := make(chan struct{})
 
-			if err != nil {
-				taskLog.Status = 3
-			} else {
-				taskLog.Status = 2
+			done := make(chan struct{})
+
+			f := func(doneCh chan struct{}) {
+				fmt.Println(cronTask.Command)
+
+				c := exec.Command("bash", "-c", cronTask.Command)
+				output, err := c.CombinedOutput()
+
+				if err != nil {
+					taskLog.Status = 3
+				} else {
+					taskLog.Status = 2
+				}
+
+				result := string(output)
+
+				taskLog.Log = &result
+				taskLog.EndTime = time.Now()
+
+				done <- struct{}{}
+				t.logChan <- taskLog
 			}
 
-			result := string(output)
+			go func(ctx context.Context) {
+				go f(done)
+				select {
 
-			taskLog.Log = &result
-			taskLog.EndTime = time.Now()
+				case <-ctx.Done(): // 调用cancel方法
+					forever <- struct{}{}
+					return
+				case <-done: // 任务执行完成
+					forever <- struct{}{}
+					return
+				}
+			}(ctx)
 
-			logChan <- taskLog
+			// 超时退出
+			go func() {
+				time.Sleep(time.Duration(cronTask.Timeout) * time.Second)
+				cancel()
+			}()
+
+			<-forever
+			delete(t.processingTask, taskLog.TaskLogID)
 		},
 	}
 	return
