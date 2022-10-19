@@ -21,8 +21,8 @@ func (l *taskLog) SaveLog(taskID int32) (taskLog *model.TaskLog) {
 	taskLog = &model.TaskLog{
 		TaskID:    taskID,
 		Status:    1,
-		StartTime: time.Now(),
-		CreatedAt: time.Now(),
+		StartTime: model.Time(time.Now()),
+		CreatedAt: model.Time(time.Now()),
 	}
 
 	l.db.Create(&taskLog)

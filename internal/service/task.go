@@ -133,7 +133,7 @@ func (t *task) StopTask(logId int32) (err error) {
 	t.processingTask[logId]()
 
 	log.Status = 4
-	log.EndTime = time.Now()
+	log.EndTime = model.Time(time.Now())
 	t.logChan <- &log
 
 	return
@@ -183,7 +183,14 @@ func (t *task) makeTask(cronTask model.Task) (ta cron.Task) {
 		Func: func() {
 			// 任务执行开始时写入日志
 			taskLog := TaskLogService.SaveLog(cronTask.TaskID)
-			ctx, cancel := context.WithCancel(context.Background())
+
+			var ctx context.Context
+			var cancel context.CancelFunc
+			if cronTask.Timeout > 0 {
+				ctx, cancel = context.WithTimeout(context.Background(), time.Duration(cronTask.Timeout)*time.Second)
+			} else {
+				ctx, cancel = context.WithCancel(context.Background())
+			}
 
 			t.processingTask[taskLog.TaskLogID] = cancel
 
@@ -205,8 +212,8 @@ func (t *task) makeTask(cronTask model.Task) (ta cron.Task) {
 
 				result := string(output)
 
-				taskLog.Log = &result
-				taskLog.EndTime = time.Now()
+				taskLog.Log = result
+				taskLog.EndTime = model.Time(time.Now())
 
 				done <- struct{}{}
 				t.logChan <- taskLog
@@ -225,13 +232,8 @@ func (t *task) makeTask(cronTask model.Task) (ta cron.Task) {
 				}
 			}(ctx)
 
-			// 超时退出
-			go func() {
-				time.Sleep(time.Duration(cronTask.Timeout) * time.Second)
-				cancel()
-			}()
-
 			<-forever
+
 			delete(t.processingTask, taskLog.TaskLogID)
 		},
 	}
