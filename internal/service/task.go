@@ -10,6 +10,7 @@ import (
 	"gin-api/pkg/mysql"
 	"gin-api/pkg/mysql/model"
 	"os/exec"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -19,14 +20,15 @@ type task struct {
 	db             *gorm.DB
 	taskServer     cron.Server
 	logChan        chan *model.TaskLog
-	processingTask map[int32]context.CancelFunc
+	processingTask map[int64]context.CancelFunc
+	mu             sync.Mutex
 }
 
 var TaskService = &task{
 	db:             mysql.GetDB(),
 	taskServer:     cron.GetCron(),
 	logChan:        make(chan *model.TaskLog),
-	processingTask: make(map[int32]context.CancelFunc),
+	processingTask: make(map[int64]context.CancelFunc),
 }
 
 func (t *task) GetAllTask() (taskList []model.Task) {
@@ -118,7 +120,7 @@ func (t *task) Execute(taskId int32) (err error) {
 	return
 }
 
-func (t *task) StopTask(logId int32) (err error) {
+func (t *task) StopTask(logId int64) (err error) {
 	log := model.TaskLog{}
 	if err = t.db.Where("task_log_id = ?", logId).First(&log, logId).Error; err != nil {
 		err = errors.New("任务不存在或已结束")
@@ -131,6 +133,9 @@ func (t *task) StopTask(logId int32) (err error) {
 	}
 
 	t.processingTask[logId]()
+	t.mu.Lock()
+	delete(t.processingTask, logId)
+	t.mu.Unlock()
 
 	log.Status = 4
 	log.EndTime = model.Time(time.Now())
@@ -192,7 +197,9 @@ func (t *task) makeTask(cronTask model.Task) (ta cron.Task) {
 				ctx, cancel = context.WithCancel(context.Background())
 			}
 
+			t.mu.Lock()
 			t.processingTask[taskLog.TaskLogID] = cancel
+			t.mu.Unlock()
 
 			forever := make(chan struct{})
 
@@ -221,20 +228,23 @@ func (t *task) makeTask(cronTask model.Task) (ta cron.Task) {
 
 			go func(ctx context.Context) {
 				go f(done)
-				select {
 
+				select {
 				case <-ctx.Done(): // 调用cancel方法
 					forever <- struct{}{}
 					return
 				case <-done: // 任务执行完成
 					forever <- struct{}{}
+					cancel()
 					return
 				}
 			}(ctx)
 
 			<-forever
 
+			t.mu.Lock()
 			delete(t.processingTask, taskLog.TaskLogID)
+			t.mu.Unlock()
 		},
 	}
 	return

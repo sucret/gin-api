@@ -76,7 +76,7 @@ func generateTable() {
 		Mode: gen.WithDefaultQuery | gen.WithQueryInterface,
 
 		// 表字段可为 null 值时, 对应结体字段使用指针类型
-		FieldNullable: false, // generate pointer when field is nullable
+		// FieldNullable: false, // generate pointer when field is nullable
 
 		// 表字段默认值与模型结构体字段零值不一致的字段, 在插入数据时需要赋值该字段值为零值的, 结构体字段须是指针类型才能成功, 即`FieldCoverable:true`配置下生成的结构体字段.
 		// 因为在插入时遇到字段为零值的会被GORM赋予默认值. 如字段`age`表默认值为10, 即使你显式设置为0最后也会被GORM设为10提交.
@@ -92,7 +92,6 @@ func generateTable() {
 	})
 
 	dataMap := map[string]func(detailType string) (dataType string){
-		"longtext":  func(detailType string) (dataType string) { return "string" },
 		"timestamp": func(detailType string) (dataType string) { return "Time" },
 	}
 

@@ -107,7 +107,7 @@ func (*taskApi) Stop(c *gin.Context) {
 		response.BusinessFail(c, "参数错误")
 	}
 
-	err = service.TaskService.StopTask(int32(logId))
+	err = service.TaskService.StopTask(int64(logId))
 
 	if err != nil {
 		response.BusinessFail(c, err.Error())
