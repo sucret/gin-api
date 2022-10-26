@@ -36,7 +36,7 @@ func newNode(db *gorm.DB) node {
 	_node.ParentNodeID = field.NewInt32(tableName, "parent_node_id")
 	_node.Component = field.NewString(tableName, "component")
 	_node.Redirect = field.NewString(tableName, "redirect")
-	_node.CreatedAt = field.NewTime(tableName, "created_at")
+	_node.CreatedAt = field.NewField(tableName, "created_at")
 
 	_node.fillFieldMap()
 
@@ -56,7 +56,7 @@ type node struct {
 	ParentNodeID field.Int32  // 上级节点ID
 	Component    field.String
 	Redirect     field.String // 重定向地址
-	CreatedAt    field.Time   // 创建时间
+	CreatedAt    field.Field  // 创建时间
 
 	fieldMap map[string]field.Expr
 }
@@ -82,7 +82,7 @@ func (n *node) updateTableName(table string) *node {
 	n.ParentNodeID = field.NewInt32(table, "parent_node_id")
 	n.Component = field.NewString(table, "component")
 	n.Redirect = field.NewString(table, "redirect")
-	n.CreatedAt = field.NewTime(table, "created_at")
+	n.CreatedAt = field.NewField(table, "created_at")
 
 	n.fillFieldMap()
 

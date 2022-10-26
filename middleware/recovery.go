@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"gin-api/internal/response"
 	"gin-api/pkg/config"
+	"gin-api/response"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/natefinch/lumberjack.v2"

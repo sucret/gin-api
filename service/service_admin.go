@@ -3,11 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
-	"gin-api/internal/request"
-	"gin-api/internal/response"
 	"gin-api/pkg/mysql"
 	"gin-api/pkg/mysql/model"
 	redis_ "gin-api/pkg/redis"
+	"gin-api/request"
+	"gin-api/response"
 	"math/rand"
 	"time"
 

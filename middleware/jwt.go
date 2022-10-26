@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"gin-api/internal/response"
-	"gin-api/internal/service"
 	"gin-api/pkg/config"
 	"gin-api/pkg/mysql/model"
+	"gin-api/response"
+	"gin-api/service"
 	"strconv"
 	"time"
 

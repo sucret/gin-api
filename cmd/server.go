@@ -5,10 +5,9 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-	"gin-api/internal/router"
-	"gin-api/internal/service"
-	"gin-api/internal/validator"
+	"gin-api/router"
+	"gin-api/service"
+	"gin-api/validator"
 
 	"github.com/spf13/cobra"
 )
@@ -48,6 +47,4 @@ func run() {
 
 	validator.InitializeValidator()
 	router.NewHttpServer()
-
-	fmt.Println("server called1")
 }

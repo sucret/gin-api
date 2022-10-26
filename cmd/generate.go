@@ -66,7 +66,7 @@ func (o *generateOption) run() {
 func generateTable() {
 	db := mysql.New()
 
-	g := gen.NewGenerator(gen.Config{
+	config := gen.Config{
 		OutPath:      "pkg/mysql/query",
 		ModelPkgPath: "pkg/mysql/model",
 
@@ -89,10 +89,12 @@ func generateTable() {
 		FieldWithIndexTag: false, // generate with gorm index tag
 		// 生成 gorm 标签的字段类型属性
 		FieldWithTypeTag: true, // generate with gorm column type tag
-	})
+	}
+	g := gen.NewGenerator(config)
 
 	dataMap := map[string]func(detailType string) (dataType string){
 		"timestamp": func(detailType string) (dataType string) { return "Time" },
+		"datetime":  func(detailType string) (dataType string) { return "Time" },
 	}
 
 	g.WithDataTypeMap(dataMap)
@@ -100,7 +102,7 @@ func generateTable() {
 	// 设置目标 db
 	g.UseDB(db)
 
-	// g.GenerateAllTable()
+	allModel := g.GenerateAllTable()
 
 	role := g.GenerateModel("role")
 	node := g.GenerateModel("node")
@@ -117,7 +119,7 @@ func generateTable() {
 	}...)
 
 	// 角色表，关联用户 和 权限
-	role = g.GenerateModel("role", []gen.ModelOpt{
+	g.GenerateModel("role", []gen.ModelOpt{
 		// 角色和用户表关系 many2many
 		gen.FieldRelate(field.Many2Many, "AdminList", admin, &field.RelateConfig{GORMTag: "many2many:admin_role;foreignKey:RoleID;joinForeignKey:RoleID;joinReferences:AdminID"}),
 
@@ -125,6 +127,6 @@ func generateTable() {
 		gen.FieldRelate(field.Many2Many, "NodeList", node, &field.RelateConfig{GORMTag: "many2many:role_node;foreignKey:RoleID;joinForeignKey:RoleID;joinReferences:NodeID"}),
 	}...)
 
-	g.ApplyBasic(role, admin, node)
+	g.ApplyBasic(allModel...)
 	g.Execute()
 }

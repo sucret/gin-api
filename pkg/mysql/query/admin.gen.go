@@ -32,12 +32,7 @@ func newAdmin(db *gorm.DB) admin {
 	_admin.Mobile = field.NewString(tableName, "mobile")
 	_admin.Password = field.NewString(tableName, "password")
 	_admin.Status = field.NewInt64(tableName, "status")
-	_admin.CreatedAt = field.NewTime(tableName, "created_at")
-	_admin.RoleList = adminManyToManyRoleList{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("RoleList", "model.Role"),
-	}
+	_admin.CreatedAt = field.NewField(tableName, "created_at")
 
 	_admin.fillFieldMap()
 
@@ -53,8 +48,7 @@ type admin struct {
 	Mobile    field.String // 用户手机号
 	Password  field.String // 用户密码
 	Status    field.Int64  // 状态：1启用|2禁用
-	CreatedAt field.Time   // 创建时间
-	RoleList  adminManyToManyRoleList
+	CreatedAt field.Field  // 创建时间
 
 	fieldMap map[string]field.Expr
 }
@@ -76,7 +70,7 @@ func (a *admin) updateTableName(table string) *admin {
 	a.Mobile = field.NewString(table, "mobile")
 	a.Password = field.NewString(table, "password")
 	a.Status = field.NewInt64(table, "status")
-	a.CreatedAt = field.NewTime(table, "created_at")
+	a.CreatedAt = field.NewField(table, "created_at")
 
 	a.fillFieldMap()
 
@@ -99,85 +93,18 @@ func (a *admin) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *admin) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 7)
+	a.fieldMap = make(map[string]field.Expr, 6)
 	a.fieldMap["admin_id"] = a.AdminID
 	a.fieldMap["username"] = a.Username
 	a.fieldMap["mobile"] = a.Mobile
 	a.fieldMap["password"] = a.Password
 	a.fieldMap["status"] = a.Status
 	a.fieldMap["created_at"] = a.CreatedAt
-
 }
 
 func (a admin) clone(db *gorm.DB) admin {
 	a.adminDo.ReplaceDB(db)
 	return a
-}
-
-type adminManyToManyRoleList struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a adminManyToManyRoleList) Where(conds ...field.Expr) *adminManyToManyRoleList {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a adminManyToManyRoleList) WithContext(ctx context.Context) *adminManyToManyRoleList {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a adminManyToManyRoleList) Model(m *model.Admin) *adminManyToManyRoleListTx {
-	return &adminManyToManyRoleListTx{a.db.Model(m).Association(a.Name())}
-}
-
-type adminManyToManyRoleListTx struct{ tx *gorm.Association }
-
-func (a adminManyToManyRoleListTx) Find() (result []*model.Role, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a adminManyToManyRoleListTx) Append(values ...*model.Role) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a adminManyToManyRoleListTx) Replace(values ...*model.Role) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a adminManyToManyRoleListTx) Delete(values ...*model.Role) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a adminManyToManyRoleListTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a adminManyToManyRoleListTx) Count() int64 {
-	return a.tx.Count()
 }
 
 type adminDo struct{ gen.DO }

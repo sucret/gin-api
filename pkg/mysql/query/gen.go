@@ -12,58 +12,86 @@ import (
 )
 
 var (
-	Q     = new(Query)
-	Admin *admin
-	Node  *node
-	Role  *role
+	Q         = new(Query)
+	Admin     *admin
+	AdminRole *adminRole
+	Node      *node
+	Role      *role
+	RoleNode  *roleNode
+	Task      *task
+	TaskLog   *taskLog
 )
 
 func SetDefault(db *gorm.DB) {
 	*Q = *Use(db)
 	Admin = &Q.Admin
+	AdminRole = &Q.AdminRole
 	Node = &Q.Node
 	Role = &Q.Role
+	RoleNode = &Q.RoleNode
+	Task = &Q.Task
+	TaskLog = &Q.TaskLog
 }
 
 func Use(db *gorm.DB) *Query {
 	return &Query{
-		db:    db,
-		Admin: newAdmin(db),
-		Node:  newNode(db),
-		Role:  newRole(db),
+		db:        db,
+		Admin:     newAdmin(db),
+		AdminRole: newAdminRole(db),
+		Node:      newNode(db),
+		Role:      newRole(db),
+		RoleNode:  newRoleNode(db),
+		Task:      newTask(db),
+		TaskLog:   newTaskLog(db),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Admin admin
-	Node  node
-	Role  role
+	Admin     admin
+	AdminRole adminRole
+	Node      node
+	Role      role
+	RoleNode  roleNode
+	Task      task
+	TaskLog   taskLog
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:    db,
-		Admin: q.Admin.clone(db),
-		Node:  q.Node.clone(db),
-		Role:  q.Role.clone(db),
+		db:        db,
+		Admin:     q.Admin.clone(db),
+		AdminRole: q.AdminRole.clone(db),
+		Node:      q.Node.clone(db),
+		Role:      q.Role.clone(db),
+		RoleNode:  q.RoleNode.clone(db),
+		Task:      q.Task.clone(db),
+		TaskLog:   q.TaskLog.clone(db),
 	}
 }
 
 type queryCtx struct {
-	Admin IAdminDo
-	Node  INodeDo
-	Role  IRoleDo
+	Admin     IAdminDo
+	AdminRole IAdminRoleDo
+	Node      INodeDo
+	Role      IRoleDo
+	RoleNode  IRoleNodeDo
+	Task      ITaskDo
+	TaskLog   ITaskLogDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Admin: q.Admin.WithContext(ctx),
-		Node:  q.Node.WithContext(ctx),
-		Role:  q.Role.WithContext(ctx),
+		Admin:     q.Admin.WithContext(ctx),
+		AdminRole: q.AdminRole.WithContext(ctx),
+		Node:      q.Node.WithContext(ctx),
+		Role:      q.Role.WithContext(ctx),
+		RoleNode:  q.RoleNode.WithContext(ctx),
+		Task:      q.Task.WithContext(ctx),
+		TaskLog:   q.TaskLog.WithContext(ctx),
 	}
 }
 

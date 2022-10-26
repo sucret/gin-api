@@ -2,9 +2,9 @@ package api
 
 import (
 	"fmt"
-	"gin-api/internal/request"
-	"gin-api/internal/response"
-	"gin-api/internal/service"
+	"gin-api/request"
+	"gin-api/response"
+	"gin-api/service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

@@ -1,9 +1,9 @@
 package router
 
 import (
-	"gin-api/internal/api"
-	"gin-api/internal/middleware"
-	"gin-api/internal/service"
+	api "gin-api/api/admin"
+	"gin-api/middleware"
+	"gin-api/service"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -40,6 +40,7 @@ func setAdminRouter(r *gin.Engine, db *gorm.DB) {
 		adminRouters.GET("/node/detail", api.NodeApi.NodeDetail)
 		adminRouters.GET("/node/delete", api.NodeApi.DeleteNode)
 
+		// 定时任务
 		adminRouters.GET("/task/list", api.TaskApi.List)
 		adminRouters.POST("/task/change-status", api.TaskApi.ChangeStatus)
 		adminRouters.POST("/task/save", api.TaskApi.Save)
@@ -47,11 +48,5 @@ func setAdminRouter(r *gin.Engine, db *gorm.DB) {
 		adminRouters.POST("/task/log", api.TaskApi.Log)
 		adminRouters.GET("/task/execute", api.TaskApi.Execute)
 		adminRouters.GET("/task/stop", api.TaskApi.Stop)
-
 	}
-
-	// group := r.Group("/admin")
-	// {
-	// 	group.GET("/profile", api.AdminApi.Profile())
-	// }
 }

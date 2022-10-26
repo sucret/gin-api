@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"gin-api/internal/response"
-	"gin-api/internal/service"
+	"gin-api/response"
+	"gin-api/service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

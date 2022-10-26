@@ -2,11 +2,11 @@ package service
 
 import (
 	"errors"
-	"gin-api/internal/request"
-	"gin-api/internal/response"
 	"gin-api/pkg/mysql"
 	"gin-api/pkg/mysql/model"
 	redis_ "gin-api/pkg/redis"
+	"gin-api/request"
+	"gin-api/response"
 
 	"github.com/go-redis/redis"
 	"gorm.io/gorm"
