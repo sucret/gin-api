@@ -13,7 +13,7 @@ type roleApi struct{}
 
 var RoleApi = new(roleApi)
 
-func (*roleApi) RoleList(c *gin.Context) {
+func (*roleApi) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 
 	roleList := service.RoleService.List(page)
@@ -21,7 +21,7 @@ func (*roleApi) RoleList(c *gin.Context) {
 	response.Success(c, roleList)
 }
 
-func (*roleApi) SaveRole(c *gin.Context) {
+func (*roleApi) Save(c *gin.Context) {
 	var form request.SaveRole
 	if err := c.ShouldBindJSON(&form); err != nil {
 		response.ValidateFail(c, request.GetErrorMsg(form, err))
@@ -38,7 +38,7 @@ func (*roleApi) SaveRole(c *gin.Context) {
 	response.Success(c, role)
 }
 
-func (*roleApi) RoleDetail(c *gin.Context) {
+func (*roleApi) Detail(c *gin.Context) {
 	roleId, err := strconv.Atoi(c.Query("role_id"))
 	if err != nil {
 		response.BusinessFail(c, "参数错误")

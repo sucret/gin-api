@@ -14,13 +14,7 @@ type adminApi struct{}
 
 var AdminApi = new(adminApi)
 
-func (*adminApi) Profile() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Println("aaaefawe")
-	}
-}
-
-func (*adminApi) SaveAdmin(c *gin.Context) {
+func (*adminApi) Save(c *gin.Context) {
 	var form request.SaveAdmin
 	if err := c.ShouldBindJSON(&form); err != nil {
 		response.ValidateFail(c, request.GetErrorMsg(form, err))
@@ -36,7 +30,7 @@ func (*adminApi) SaveAdmin(c *gin.Context) {
 	response.Success(c, admin)
 }
 
-func (*adminApi) AdminDetail(c *gin.Context) {
+func (*adminApi) Detail(c *gin.Context) {
 	adminId, err := strconv.Atoi(c.Query("admin_id"))
 	if err != nil {
 		response.BusinessFail(c, "参数错误")
@@ -53,7 +47,7 @@ func (*adminApi) AdminDetail(c *gin.Context) {
 }
 
 // 登陆
-func (*adminApi) AdminLogin(c *gin.Context) {
+func (*adminApi) Login(c *gin.Context) {
 	var form request.AdminLogin
 	if err := c.ShouldBindJSON(&form); err != nil {
 		response.ValidateFail(c, request.GetErrorMsg(form, err))
@@ -75,7 +69,7 @@ func (*adminApi) AdminLogin(c *gin.Context) {
 }
 
 // 用户首页
-func (*adminApi) AdminProfile(c *gin.Context) {
+func (*adminApi) Profile(c *gin.Context) {
 	userId, _ := strconv.Atoi(c.GetString("userId"))
 
 	if user, err := service.AdminService.GetAdminById(userId); err != nil {
@@ -107,7 +101,7 @@ func (*adminApi) AdminSendLoginSms(c *gin.Context) {
 	response.Success(c, "")
 }
 
-func (*adminApi) AdminList(c *gin.Context) {
+func (*adminApi) List(c *gin.Context) {
 	adminList, err := service.AdminService.List()
 	if err != nil {
 		response.BusinessFail(c, err.Error())

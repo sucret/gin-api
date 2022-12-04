@@ -2,24 +2,13 @@ package response
 
 import "gin-api/pkg/mysql/model"
 
-type AdminList struct {
-	AdminId   uint        `json:"admin_id"`
-	Username  string      `json:"username"`
-	Mobile    string      `json:"mobile"`
-	CreatedAt string      `json:"created_at"`
-	RoleList  interface{} `json:"role_list"`
-}
-
 type AdminDetail struct {
 	model.Admin
 	RoleInfo []struct {
 		RoleId uint   `json:"role_id"`
 		Name   string `json:"name"`
 	} `json:"role_info"`
-	RoleList []struct {
-		RoleId uint   `json:"role_id"`
-		Name   string `json:"name"`
-	} `json:"role_list"`
+	RoleList []model.Role `json:"role_list"`
 }
 
 type NodeMeta struct {

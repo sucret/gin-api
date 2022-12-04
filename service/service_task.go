@@ -103,7 +103,9 @@ func (t *task) Detail(taskId int32) (task model.Task, err error) {
 func (t *task) Log(form request.TaskLogList) (resp response.TaskLogResponse, err error) {
 	t.db.Model(&model.TaskLog{}).Where("task_id = ?", form.TaskID).Count(&resp.Total)
 
-	t.db.Where("task_id = ?", form.TaskID).Order("task_log_id desc").Offset((form.Page - 1) * form.PageSize).Limit(form.PageSize).Find(&resp.LogList)
+	t.db.Where("task_id = ?", form.TaskID).
+		Order("task_log_id desc").Offset((form.Page - 1) * form.PageSize).
+		Limit(form.PageSize).Find(&resp.LogList)
 	return
 }
 

@@ -9,8 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type taskApi struct {
-}
+type taskApi struct{}
 
 var TaskApi = new(taskApi)
 

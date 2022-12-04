@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"gin-api/pkg/mysql"
@@ -31,7 +33,10 @@ func (a *adminService) Save(data request.SaveAdmin) (admin model.Admin, err erro
 	admin.Mobile = data.Mobile
 
 	if data.Password != "" {
-		admin.Password = data.Password
+		h := md5.New()
+		h.Write([]byte(data.Password))
+
+		admin.Password = hex.EncodeToString(h.Sum(nil))
 	}
 
 	tx := a.db.Begin()
@@ -76,65 +81,47 @@ func (a *adminService) Save(data request.SaveAdmin) (admin model.Admin, err erro
 
 func (a *adminService) Detail(adminId uint) (admin response.AdminDetail, err error) {
 	a.db.Where("admin_id = ?", adminId).Find(&admin.Admin)
-	a.db.Table("admin_role").Select("admin_role.role_id, role.name").Joins("left join role on admin_role.role_id = role.role_id").Where("admin_role.admin_id = ?", adminId).Scan(&admin.RoleInfo)
+
+	a.db.Table("admin_role").
+		Select("admin_role.role_id, role.name").
+		Joins("left join role on admin_role.role_id = role.role_id").
+		Where("admin_role.admin_id = ?", adminId).
+		Scan(&admin.RoleInfo)
 
 	// 获取所有角色
-	a.db.Model(&model.Role{}).Scan(&admin.RoleList)
+	a.db.Select("role_id, name").Find(&admin.RoleList)
+
 	return
 }
 
-func (a *adminService) List() (adminList []map[string]interface{}, err error) {
-	// 获取所有用户
-	a.db.Model(&model.Admin{}).Select("admin_id", "username", "mobile", "created_at").Order("admin_id DESC").Find(&adminList)
+func (a *adminService) List() (list []model.Admin, err error) {
 
-	var adminIds []int32
-	for _, val := range adminList {
-		id, _ := val["admin_id"].(int32)
-		adminIds = append(adminIds, id)
-	}
-
-	// 获取用户角色关联信息
-	var roleIds []int32
-	var adminRole []model.AdminRole
-	a.db.Where("admin_id IN ? ", adminIds).Find(&adminRole)
-	for _, val := range adminRole {
-		roleIds = append(roleIds, val.RoleID)
-	}
-
-	// 获取角色列表
-	var roleList []model.Role
-
-	a.db.Where("role_id IN ? ", roleIds).Find(&roleList)
-
-	adminRoleList := make(map[int32][]model.Role)
-	for _, val := range adminRole {
-		for _, v := range roleList {
-			if val.RoleID == v.RoleID {
-				adminRoleList[val.AdminID] = append(adminRoleList[val.AdminID], v)
-			}
-		}
-	}
-
-	for key, val := range adminList {
-		id, _ := val["admin_id"].(int32)
-		adminList[key]["role_list"] = adminRoleList[id]
-	}
-
+	err = a.db.Preload("RoleList").Order("admin_id DESC").Find(&list).Error
 	return
 }
 
 // 登陆
 func (a *adminService) AdminLogin(params request.AdminLogin) (admin *model.Admin, err error) {
+	if err = a.db.Where("mobile = ?", params.Mobile).First(&admin).Error; err != nil {
+		err = errors.New("用户不存在")
+	}
+
 	if params.Captcha != "" {
 		// 判断验证码是否正确
 		if code, _ := a.redis.Get("smscode_" + params.Mobile).Result(); code != params.Captcha {
 			err = errors.New("验证码不正确")
 			return
 		}
-	}
+	} else if params.Password != "" {
+		h := md5.New()
+		h.Write([]byte(params.Password))
 
-	if err = a.db.Where("mobile = ?", params.Mobile).First(&admin).Error; err != nil {
-		err = errors.New("用户不存在")
+		if hex.EncodeToString(h.Sum(nil)) != admin.Password {
+			err = errors.New("密码不正确")
+			return
+		}
+	} else {
+		err = errors.New("验证码或密码不正确")
 	}
 
 	return
@@ -180,25 +167,18 @@ func (a *adminService) CheckAdminPermission(userId int, path string) bool {
 		return true
 	}
 
-	node := model.Node{}
-	roleList := []model.AdminRole{}
-	roleIdList := []int32{}
+	admin := model.Admin{}
+	a.db.Preload("RoleList").
+		Preload("RoleList.NodeList").
+		Where("admin_id = ?", userId).First(&admin)
 
-	a.db.Where("path = ?", path).First(&node)
-	if node.NodeID == 0 {
-		return false
+	for _, role := range admin.RoleList {
+		for _, node := range role.NodeList {
+			if node.Path == path {
+				return true
+			}
+		}
 	}
 
-	a.db.Where("admin_id = ?", userId).Find(&roleList)
-	if len(roleList) == 0 {
-		return false
-	}
-	for _, val := range roleList {
-		roleIdList = append(roleIdList, val.RoleID)
-	}
-
-	var count int64
-	a.db.Model(&model.RoleNode{}).Where("role_id IN ? AND node_id = ?", roleIdList, node.NodeID).Count(&count)
-
-	return count != 0
+	return false
 }
